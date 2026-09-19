@@ -74,8 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const bodyText = await request.text();
-    const fs = require('fs');
-    fs.appendFileSync('webhook-debug.log', new Date().toISOString() + '\\n' + bodyText + '\\n\\n');
+    console.log('[Webhook Debug Payload]:', bodyText);
     const body = JSON.parse(bodyText);
     const config = getMetaConfig();
 
