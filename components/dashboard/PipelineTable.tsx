@@ -28,14 +28,14 @@ export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTable
       case "cancelled":
         return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">Cancelled</span>;
       default:
-        return <span className="text-gray-500 text-sm">{status}</span>;
+        return <span className="text-gray-500 dark:text-gray-400 text-sm">{status}</span>;
     }
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-gray-900 transition-colors rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm overflow-hidden">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-gray-900 font-semibold text-base">B2B Orders Pipeline</h3>
+        <h3 className="text-gray-900 dark:text-gray-100 font-semibold text-base">B2B Orders Pipeline</h3>
       </div>
       
       <div className="overflow-x-auto">
@@ -56,7 +56,7 @@ export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTable
               <th className="px-4 py-3 text-xs font-semibold text-indigo-900 uppercase tracking-wider rounded-r-lg">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
@@ -73,21 +73,21 @@ export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTable
               </tr>
             ) : (
               orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50/50 transition-colors group">
+                <tr key={order.id} className="hover:bg-gray-50/50 dark:bg-gray-800/50 transition-colors group">
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="text-base font-medium text-gray-900">{order.orderNumber}</div>
-                    <div className="text-xs text-gray-500">{format(new Date(order.createdAt), "MMM d, HH:mm")}</div>
+                    <div className="text-base font-medium text-gray-900 dark:text-gray-100">{order.orderNumber}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{format(new Date(order.createdAt), "MMM d, HH:mm")}</div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="text-base font-medium text-gray-900">{order.customerName}</div>
-                    <div className="text-xs text-gray-500 flex items-center mt-0.5">
+                    <div className="text-base font-medium text-gray-900 dark:text-gray-100">{order.customerName}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-0.5">
                       <Phone className="w-3 h-3 mr-1" /> {order.customerPhone}
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-sm text-gray-600 max-w-[200px] truncate">
+                  <td className="px-4 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-[200px] truncate">
                     {order.items.map((i: OrderItem) => `${i.quantity}x ${i.name}`).join(', ')}
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-base font-bold text-gray-900">
+                  <td className="px-4 py-4 whitespace-nowrap text-base font-bold text-gray-900 dark:text-gray-100">
                     ₹{order.totalAmount.toLocaleString()}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
