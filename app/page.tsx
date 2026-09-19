@@ -67,12 +67,12 @@ export default function WhatsAppOrdersDashboard() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Auto-refresh polling every 12 seconds
+  // Auto-refresh polling every 3 seconds
   React.useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => {
       fetchOrders(false);
-    }, 12000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [autoRefresh, fetchOrders]);
 
