@@ -11,11 +11,7 @@ import {
 import { OrderDetailsDialog } from "@/components/order-details-dialog";
 import { CreateOrderDialog } from "@/components/create-order-dialog";
 import { ApiConfigModal } from "@/components/api-config-modal";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { Header } from "@/components/dashboard/Header";
 import { MetricCards } from "@/components/dashboard/MetricCards";
-import { MiddleWidgets } from "@/components/dashboard/MiddleWidgets";
-import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { PipelineTable } from "@/components/dashboard/PipelineTable";
 import { toast } from "sonner";
 
@@ -150,24 +146,15 @@ export default function WhatsAppOrdersDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900 font-sans antialiased overflow-hidden selection:bg-indigo-100 selection:text-indigo-900">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <Header />
-        
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 relative">
-          <div className="max-w-7xl mx-auto space-y-6">
-            <MetricCards analytics={analytics} />
-            <MiddleWidgets />
-            <RevenueChart />
-            <PipelineTable orders={filteredOrders} onUpdateStatus={handleUpdateStatus} loading={loading} />
-          </div>
-        </main>
+    <>
+      <div className="max-w-7xl mx-auto space-y-6">
+        <MetricCards analytics={analytics} />
+        <PipelineTable orders={filteredOrders} onUpdateStatus={handleUpdateStatus} loading={loading} />
       </div>
 
       <OrderDetailsDialog order={selectedOrder} open={isDetailsOpen} onOpenChange={setIsDetailsOpen} onUpdateStatus={handleUpdateStatus} />
       <CreateOrderDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} onOrderCreated={() => fetchOrders(true)} />
       <ApiConfigModal open={isConfigOpen} onOpenChange={setIsConfigOpen} metaStatus={metaStatus} />
-    </div>
+    </>
   );
 }

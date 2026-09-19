@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Search, MessageSquare, Bell } from "lucide-react";
+import { Search, MessageSquare, Bell, User } from "lucide-react";
 
 export function Header() {
   return (
@@ -24,7 +24,7 @@ export function Header() {
           <Bell className="h-5 w-5" />
         </button>
         <div className="h-8 w-8 rounded-full bg-indigo-100 border border-indigo-200 overflow-hidden flex items-center justify-center shrink-0">
-          <img src="https://i.pravatar.cc/150?img=47" alt="User Avatar" className="h-full w-full object-cover" />
+          <User className="w-5 h-5 text-indigo-500" />
         </div>
       </div>
     </header>

@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
+import { Sidebar } from "@/components/dashboard/Sidebar";
+import { Header } from "@/components/dashboard/Header";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -49,7 +51,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="flex h-screen bg-gray-50 text-gray-900 font-sans antialiased overflow-hidden selection:bg-indigo-100 selection:text-indigo-900">
+            <Sidebar />
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+              <Header />
+              <main className="flex-1 overflow-y-auto p-6 lg:p-8 relative">
+                {children}
+              </main>
+            </div>
+          </div>
           <Toaster
             position="bottom-right"
             toastOptions={{
