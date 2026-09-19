@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { INITIAL_MOCK_ORDERS } from "@/lib/mock-data";
 import { WhatsAppOrder, WhatsAppWebhookPayload } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 
-// In-memory store for orders during session / local runtime
-let inMemoryOrders: WhatsAppOrder[] = [];
-
-/**
- * Helper to check if live Meta WhatsApp credentials are configured
- */
 function getMetaConfig() {
   const token = process.env.WHATSAPP_API_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -18,15 +12,55 @@ function getMetaConfig() {
   return { token, phoneNumberId, verifyToken, version, isConfigured };
 }
 
-/**
- * GET Handler:
- * 1. Webhook Verification for Meta Developers (hub.mode, hub.verify_token, hub.challenge)
- * 2. Fetch Orders List for Dashboard (when queried by frontend)
- */
+function mapToRow(order: WhatsAppOrder) {
+  return {
+    id: order.id,
+    order_number: order.orderNumber,
+    customer_name: order.customerName,
+    customer_phone: order.customerPhone,
+    status: order.status,
+    payment_status: order.paymentStatus,
+    items: order.items,
+    subtotal: order.subtotal,
+    delivery_fee: order.deliveryFee,
+    discount: order.discount,
+    total_amount: order.totalAmount,
+    currency: order.currency,
+    delivery_address: order.deliveryAddress,
+    notes: order.notes,
+    created_at: order.createdAt,
+    updated_at: order.updatedAt,
+    whatsapp_message_id: order.whatsappMessageId,
+    is_mock: order.isMock
+  };
+}
+
+function mapToOrder(row: any): WhatsAppOrder {
+  return {
+    id: row.id,
+    orderNumber: row.order_number,
+    customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    status: row.status,
+    paymentStatus: row.payment_status,
+    items: row.items,
+    subtotal: row.subtotal,
+    deliveryFee: row.delivery_fee,
+    discount: row.discount,
+    totalAmount: row.total_amount,
+    currency: row.currency,
+    deliveryAddress: row.delivery_address,
+    notes: row.notes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    whatsappMessageId: row.whatsapp_message_id,
+    isMock: row.is_mock
+  };
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
-  // 1. Meta Webhook Verification challenge
   const mode = searchParams.get("hub.mode");
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
@@ -46,16 +80,41 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 2. Dashboard query: Return current orders & API connection status
   const filter = searchParams.get("status");
-  let filtered = [...inMemoryOrders];
+  
+  // Fetch from Supabase
+  let query = supabase.from("orders").select("*").order("created_at", { ascending: false });
   if (filter && filter !== "all") {
-    filtered = filtered.filter((o) => o.status === filter);
+    query = query.eq("status", filter);
   }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Supabase fetch error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+
+  const orders = data.map(mapToOrder);
+
+  // Compute analytics
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter(o => o.status === "pending").length;
+  const preparingOrders = orders.filter(o => o.status === "preparing").length;
+  const deliveredOrders = orders.filter(o => o.status === "delivered").length;
+  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
   return NextResponse.json({
     success: true,
-    orders: filtered,
+    orders,
+    analytics: {
+      totalOrders,
+      pendingOrders,
+      preparingOrders,
+      deliveredOrders,
+      totalRevenue,
+      averageOrderValue: totalOrders ? totalRevenue / totalOrders : 0,
+      currency: "INR"
+    },
     metaStatus: {
       isConfigured: config.isConfigured,
       phoneNumberId: config.phoneNumberId ? `${config.phoneNumberId.slice(0, 4)}***` : null,
@@ -65,40 +124,42 @@ export async function GET(request: NextRequest) {
   });
 }
 
-/**
- * POST Handler:
- * 1. Incoming Meta Webhook events (incoming customer messages & order triggers)
- * 2. Dispatching outbound WhatsApp messages/updates to customers
- * 3. Updating order statuses from the dashboard UI
- */
 export async function POST(request: NextRequest) {
   try {
     const bodyText = await request.text();
-    console.log('[Webhook Debug Payload]:', bodyText);
     const body = JSON.parse(bodyText);
     const config = getMetaConfig();
 
-    // Action A: Frontend Dashboard updating an order status or triggering customer message
     if (body.action === "update_status") {
       const { orderId, newStatus, notifyCustomer } = body;
-      const orderIndex = inMemoryOrders.findIndex((o) => o.id === orderId);
-
-      if (orderIndex === -1) {
-        return NextResponse.json(
-          { success: false, error: "Order not found" },
-          { status: 404 }
-        );
+      
+      const { data: fetchResult, error: fetchError } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", orderId)
+        .single();
+        
+      if (fetchError || !fetchResult) {
+        return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
       }
 
-      inMemoryOrders[orderIndex] = {
-        ...inMemoryOrders[orderIndex],
+      const updatedOrderRow = {
+        ...fetchResult,
         status: newStatus,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
-      const updatedOrder = inMemoryOrders[orderIndex];
+      const { data: updateResult, error: updateError } = await supabase
+        .from("orders")
+        .update({ status: newStatus, updated_at: updatedOrderRow.updated_at })
+        .eq("id", orderId)
+        .select()
+        .single();
 
-      // If user enabled notify customer via WhatsApp
+      if (updateError) throw updateError;
+      
+      const updatedOrder = mapToOrder(updateResult);
+
       let whatsappResult = { sent: false, note: "Mock mode - simulated notification" };
       if (notifyCustomer) {
         const messageText = `Hello ${updatedOrder.customerName}! Your Gustosa Food wholesale order *${updatedOrder.orderNumber}* status has been updated to: *${newStatus.toUpperCase().replace(/_/g, " ")}*. Thank you! 📦`;
@@ -136,7 +197,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Action B: Creating a new simulated or incoming order
     if (body.action === "create_order") {
       const newOrder: WhatsAppOrder = {
         id: `ord_gf_${Date.now().toString().slice(-4)}`,
@@ -161,7 +221,8 @@ export async function POST(request: NextRequest) {
         isMock: !config.isConfigured,
       };
 
-      inMemoryOrders = [newOrder, ...inMemoryOrders];
+      const { error: insertError } = await supabase.from("orders").insert(mapToRow(newOrder));
+      if (insertError) throw insertError;
 
       return NextResponse.json({
         success: true,
@@ -170,7 +231,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Action C: Incoming Meta WhatsApp Webhook Payload
     const webhookData = body as WhatsAppWebhookPayload;
 
     if (webhookData.object === "whatsapp_business_account" && webhookData.entry) {
@@ -183,9 +243,6 @@ export async function POST(request: NextRequest) {
               const senderName = contact?.profile?.name || "WhatsApp User";
               const senderPhone = `+${msg.from}`;
 
-              console.log(`[WhatsApp Incoming Msg] From: ${senderName} (${senderPhone}):`, msg);
-
-              // Check if it's an order or contains text
               if (msg.type === "order" && msg.order) {
                 const newOrder: WhatsAppOrder = {
                   id: `ord_wa_${msg.id.slice(-6)}`,
@@ -212,9 +269,8 @@ export async function POST(request: NextRequest) {
                   whatsappMessageId: msg.id,
                   isMock: false,
                 };
-                inMemoryOrders = [newOrder, ...inMemoryOrders];
+                await supabase.from("orders").insert(mapToRow(newOrder));
               } else if (msg.type === "text") {
-                // For testing: Create a dummy order when any text message is received
                 const newOrder: WhatsAppOrder = {
                   id: `ord_wa_${msg.id.slice(-6)}`,
                   orderNumber: `GF-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -237,7 +293,7 @@ export async function POST(request: NextRequest) {
                   whatsappMessageId: msg.id,
                   isMock: false,
                 };
-                inMemoryOrders = [newOrder, ...inMemoryOrders];
+                await supabase.from("orders").insert(mapToRow(newOrder));
               }
             }
           }
@@ -247,7 +303,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: "EVENT_RECEIVED" }, { status: 200 });
     }
 
-    // Default fallback
     return NextResponse.json({ success: true, message: "Webhook ping processed" });
   } catch (error: any) {
     console.error("[WhatsApp API Route Error]:", error);
