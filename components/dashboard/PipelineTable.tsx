@@ -8,10 +8,11 @@ import { format } from "date-fns";
 interface PipelineTableProps {
   orders: WhatsAppOrder[];
   onUpdateStatus: (orderId: string, newStatus: OrderStatus, notifyCustomer: boolean) => Promise<void>;
+  onSelectOrder: (order: WhatsAppOrder) => void;
   loading: boolean;
 }
 
-export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTableProps) {
+export function PipelineTable({ orders, onUpdateStatus, onSelectOrder, loading }: PipelineTableProps) {
   
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -73,7 +74,7 @@ export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTable
               </tr>
             ) : (
               orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50/50 dark:bg-gray-800/50 transition-colors group">
+                <tr key={order.id} onClick={() => onSelectOrder(order)} className="cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group">
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="text-base font-medium text-gray-900 dark:text-gray-100">{order.orderNumber}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{format(new Date(order.createdAt), "MMM d, HH:mm")}</div>
@@ -96,7 +97,7 @@ export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTable
                   <td className="px-4 py-4 whitespace-nowrap">
                     {order.status === "pending" && (
                       <button
-                        onClick={() => onUpdateStatus(order.id, "preparing", true)}
+                        onClick={(e) => { e.stopPropagation(); onUpdateStatus(order.id, "preparing", true); }}
                         className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md shadow-sm flex items-center"
                       >
                         <RefreshCw className="w-3 h-3 mr-1" />
@@ -105,7 +106,7 @@ export function PipelineTable({ orders, onUpdateStatus, loading }: PipelineTable
                     )}
                     {order.status === "preparing" && (
                       <button
-                        onClick={() => onUpdateStatus(order.id, "out_for_delivery", true)}
+                        onClick={(e) => { e.stopPropagation(); onUpdateStatus(order.id, "out_for_delivery", true); }}
                         className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md shadow-sm flex items-center"
                       >
                         <RefreshCw className="w-3 h-3 mr-1" />

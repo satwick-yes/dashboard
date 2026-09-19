@@ -145,11 +145,16 @@ export default function WhatsAppOrdersDashboard() {
     cancelled: { label: "Cancelled", classes: "bg-error/10 border-error/30 text-error", dot: "bg-error", icon: "cancel" }
   };
 
+  const handleSelectOrder = (order: WhatsAppOrder) => {
+    setSelectedOrder(order);
+    setIsDetailsOpen(true);
+  };
+
   return (
     <>
       <div className="max-w-7xl mx-auto space-y-6">
         <MetricCards analytics={analytics} />
-        <PipelineTable orders={filteredOrders} onUpdateStatus={handleUpdateStatus} loading={loading} />
+        <PipelineTable orders={filteredOrders} onUpdateStatus={handleUpdateStatus} onSelectOrder={handleSelectOrder} loading={loading} />
       </div>
 
       <OrderDetailsDialog order={selectedOrder} open={isDetailsOpen} onOpenChange={setIsDetailsOpen} onUpdateStatus={handleUpdateStatus} />

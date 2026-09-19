@@ -5,26 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
-  BarChart3, 
-  Wallet, 
-  ShoppingCart, 
-  Calculator, 
-  Users, 
-  Settings,
-  Server
+  Settings
 } from "lucide-react";
 
 export function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: "Control Tower", href: "/control-tower", icon: Server },
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    { name: "Sales", href: "/sales", icon: Wallet },
-    { name: "Procurement", href: "/procurement", icon: ShoppingCart },
-    { name: "Rate Management", href: "/rate-management", icon: Calculator },
-    { name: "Customers", href: "/customers", icon: Users },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
