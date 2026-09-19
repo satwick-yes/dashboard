@@ -113,6 +113,23 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      spacing: {
+        "gutter": "1.25rem",
+        "space-3xl": "3rem",
+        "space-md": "0.75rem",
+        "space-lg": "1.25rem",
+        "gutter-mobile": "0.75rem",
+        "space-2xl": "2rem",
+        "space-base": "1rem",
+        "space-xs": "0.375rem",
+        "margin-desktop": "2rem",
+        "gutter-desktop": "1.5rem",
+        "space-2xs": "0.25rem",
+        "margin-mobile": "1rem",
+        "margin": "1.5rem",
+        "space-xl": "1.5rem",
+        "space-sm": "0.5rem"
+      },
       fontFamily: {
         "body-sm": ["Plus Jakarta Sans", "sans-serif"],
         "label-sm": ["Inter", "sans-serif"],
@@ -128,6 +145,22 @@ const config: Config = {
         "headline-sm": ["Plus Jakarta Sans", "sans-serif"],
         "headline-xl-mobile": ["Plus Jakarta Sans", "sans-serif"],
         "display-lg": ["Plus Jakarta Sans", "sans-serif"]
+      },
+      fontSize: {
+        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "500" }],
+        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }],
+        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+        "headline-xl": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+        "data-tabular": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+        "display-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+        "headline-sm": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+        "headline-xl-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+        "display-lg": ["40px", { "lineHeight": "48px", "fontWeight": "700" }]
       },
       keyframes: {
         "accordion-down": {
