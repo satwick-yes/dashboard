@@ -34,7 +34,7 @@ export function PipelineTable({ orders, onUpdateStatus, onSelectOrder, loading }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 transition-colors rounded-xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm overflow-hidden">
+    <div className="bg-white/70 dark:bg-gray-900/40 backdrop-blur-xl transition-colors rounded-2xl border border-gray-200/60 dark:border-gray-800/60 p-6 shadow-sm overflow-hidden relative z-10">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-gray-900 dark:text-gray-100 font-semibold text-base">B2B Orders Pipeline</h3>
       </div>
