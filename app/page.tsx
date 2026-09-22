@@ -22,7 +22,7 @@ export default function LoginPage() {
     }
   }, [router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -43,9 +43,24 @@ export default function LoginPage() {
         setError("Password is required.");
         return;
       }
-      // For staff, we just accept any password for now as per simple auth
-      localStorage.setItem("gustosa_user", username.trim());
-      router.push("/chat");
+      
+      try {
+        const res = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim(), password })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem("gustosa_user", username.trim());
+          router.push("/chat");
+        } else {
+          setError(data.error || "Invalid username or password.");
+        }
+      } catch (err) {
+        setError("Failed to connect to authentication server.");
+      }
     }
   };
 
