@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.action === "send_message") {
-      const { customerPhone, text } = body;
+      const { customerPhone, text, staffName = "Agent" } = body;
       
       let whatsappResult = { sent: false, note: "Mock mode - simulated message" };
       
@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
         totalAmount: 0,
         currency: "INR",
         deliveryAddress: "Agent Reply",
-        notes: `Agent: ${text}`, // Prefix to easily identify
+        notes: `Agent (${staffName}): ${text}`, // Prefix to easily identify staff
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isMock: !config.isConfigured,
