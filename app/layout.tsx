@@ -3,8 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { Header } from "@/components/dashboard/Header";
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -51,18 +50,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex h-screen bg-[#f8fafc] dark:bg-[#090d16] text-gray-900 dark:text-gray-100 font-sans antialiased overflow-hidden selection:bg-indigo-100 dark:selection:bg-indigo-900 selection:text-indigo-900 dark:selection:text-indigo-100 relative">
-            {/* Subtle premium background glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] opacity-[0.07] pointer-events-none hidden dark:block bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500 via-transparent to-transparent z-0"></div>
-            
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
-              <Header />
-              <main className="flex-1 overflow-y-auto p-6 lg:p-8 relative">
-                {children}
-              </main>
-            </div>
-          </div>
+          {children}
           <Toaster
             position="bottom-right"
             toastOptions={{
