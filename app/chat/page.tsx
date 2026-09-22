@@ -280,11 +280,7 @@ export default function WhatsAppWebClone() {
             <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#EFEAE2] flex flex-col gap-2 relative">
               <div className="absolute inset-0 opacity-40 pointer-events-none" style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QZ3O9xZ8H.png")', backgroundSize: 'contain' }}></div>
               
-              <div className="text-center my-2 relative z-10">
-                <span className="bg-[#FFF3C4] text-[#54656F] text-xs px-3 py-1.5 rounded-lg shadow-sm">
-                  Messages are end-to-end encrypted. No one outside of this chat, not even WhatsApp, can read or listen to them.
-                </span>
-              </div>
+
 
               {selectedChat.messages.map((msg) => {
                 let text = msg.notes || "Sent an order";
