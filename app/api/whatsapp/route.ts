@@ -372,3 +372,29 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const customerPhone = searchParams.get("customerPhone");
+    
+    if (!customerPhone) {
+      return NextResponse.json({ success: false, error: "Missing customerPhone" }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("customer_phone", customerPhone);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, message: "Chat deleted" });
+  } catch (error: any) {
+    console.error("[WhatsApp API Route Error]:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

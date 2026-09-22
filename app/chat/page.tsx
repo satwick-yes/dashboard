@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -14,6 +14,7 @@ import {
   Check,
   CheckCheck,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import { WhatsAppOrder } from "@/lib/types";
 
@@ -40,6 +41,12 @@ export default function WhatsAppWebClone() {
   const [messageInput, setMessageInput] = useState("");
   const [orders, setOrders] = useState<WhatsAppOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+  };
 
   useEffect(() => {
     const user = localStorage.getItem("gustosa_user");
@@ -156,6 +163,28 @@ export default function WhatsAppWebClone() {
     }
   };
 
+  const handleDeleteChat = async () => {
+    if (!selectedChatPhone) return;
+    if (!confirm(`Are you sure you want to delete the chat with ${selectedChatPhone}?`)) return;
+
+    try {
+      const res = await fetch(`/api/whatsapp?customerPhone=${encodeURIComponent(selectedChatPhone)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedChatPhone(null);
+        fetchOrders();
+      }
+    } catch (err) {
+      console.error("Failed to delete chat", err);
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [selectedChatPhone, orders]);
+
   if (!staffUser) return null; // hide while redirecting
 
   return (
@@ -170,9 +199,6 @@ export default function WhatsAppWebClone() {
         <div className="bg-[#F0F2F5] h-[60px] flex items-center justify-between px-4 py-2 flex-shrink-0">
           <Avatar className="cursor-pointer" src="https://github.com/shadcn.png" fallback={staffUser.substring(0,2)} />
           <div className="flex items-center gap-4 text-[#54656F]">
-            <button className="hover:bg-black/5 p-2 rounded-full transition-colors"><CircleDashed size={20} /></button>
-            <button className="hover:bg-black/5 p-2 rounded-full transition-colors"><MessageSquare size={20} /></button>
-            <button className="hover:bg-black/5 p-2 rounded-full transition-colors"><MoreVertical size={20} /></button>
             <button onClick={handleLogout} className="hover:bg-black/5 p-2 rounded-full transition-colors" title="Log Out"><LogOut size={20} /></button>
           </div>
         </div>
@@ -271,8 +297,7 @@ export default function WhatsAppWebClone() {
                 </div>
               </div>
               <div className="flex items-center gap-4 text-[#54656F]">
-                <button className="hover:bg-black/5 p-2 rounded-full transition-colors"><Search size={20} /></button>
-                <button className="hover:bg-black/5 p-2 rounded-full transition-colors"><MoreVertical size={20} /></button>
+                <button onClick={handleDeleteChat} title="Delete Chat" className="hover:bg-black/5 p-2 rounded-full transition-colors text-red-500 hover:text-red-600"><Trash2 size={20} /></button>
               </div>
             </div>
 
@@ -327,6 +352,7 @@ export default function WhatsAppWebClone() {
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input Container */}
