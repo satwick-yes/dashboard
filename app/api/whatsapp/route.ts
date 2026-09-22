@@ -231,6 +231,66 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (body.action === "send_message") {
+      const { customerPhone, text } = body;
+      
+      let whatsappResult = { sent: false, note: "Mock mode - simulated message" };
+      
+      if (config.isConfigured && config.token && config.phoneNumberId) {
+        try {
+          const metaRes = await fetch(
+            `https://graph.facebook.com/${config.version}/${config.phoneNumberId}/messages`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${config.token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                messaging_product: "whatsapp",
+                to: customerPhone.replace(/[^0-9]/g, ""),
+                type: "text",
+                text: { body: text },
+              }),
+            }
+          );
+          const metaJson = await metaRes.json();
+          whatsappResult = { sent: metaRes.ok, note: metaRes.ok ? "Sent via Meta API" : metaJson.error?.message || "Failed" };
+        } catch (err: any) {
+          whatsappResult = { sent: false, note: `Error contacting Meta API: ${err.message}` };
+        }
+      }
+
+      // Record agent message in DB for chat history
+      const newMessageRecord: WhatsAppOrder = {
+        id: `msg_agt_${Date.now().toString().slice(-6)}`,
+        orderNumber: `MSG-${Math.floor(1000 + Math.random() * 9000)}`,
+        customerName: "Agent",
+        customerPhone: customerPhone,
+        status: "delivered", // Mark as delivered to differentiate
+        paymentStatus: "paid",
+        items: [],
+        subtotal: 0,
+        deliveryFee: 0,
+        discount: 0,
+        totalAmount: 0,
+        currency: "INR",
+        deliveryAddress: "Agent Reply",
+        notes: `Agent: ${text}`, // Prefix to easily identify
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isMock: !config.isConfigured,
+      };
+
+      await supabase.from("orders").insert(mapToRow(newMessageRecord));
+
+      return NextResponse.json({
+        success: true,
+        messageRecord: newMessageRecord,
+        whatsappResult,
+      });
+    }
+
     const webhookData = body as WhatsAppWebhookPayload;
 
     if (webhookData.object === "whatsapp_business_account" && webhookData.entry) {

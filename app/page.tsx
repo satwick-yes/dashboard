@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Search,
   MoreVertical,
@@ -13,50 +13,7 @@ import {
   Check,
   CheckCheck,
 } from "lucide-react";
-
-// Mock data
-const mockChats = [
-  {
-    id: 1,
-    phone: "+1 (555) 123-4567",
-    lastMessage: "Is my order ready for pickup?",
-    timestamp: "10:42 AM",
-    unread: 2,
-    avatar: "https://github.com/shadcn.png",
-  },
-  {
-    id: 2,
-    phone: "+1 (555) 987-6543",
-    lastMessage: "Thanks for the quick delivery!",
-    timestamp: "Yesterday",
-    unread: 0,
-    avatar: "",
-  },
-  {
-    id: 3,
-    phone: "+44 7700 900077",
-    lastMessage: "Can I add extra sauce to my order?",
-    timestamp: "Monday",
-    unread: 1,
-    avatar: "",
-  },
-  {
-    id: 4,
-    phone: "+91 98765 43210",
-    lastMessage: "I received the wrong item.",
-    timestamp: "Sunday",
-    unread: 0,
-    avatar: "",
-  },
-];
-
-const mockMessages = [
-  { id: 1, text: "Hi, I placed an order 30 mins ago.", sender: "customer", timestamp: "10:30 AM" },
-  { id: 2, text: "Hello! Let me check the status for you.", sender: "agent", timestamp: "10:32 AM", status: "read" },
-  { id: 3, text: "Your order is currently being prepared and will be out for delivery in 10 minutes.", sender: "agent", timestamp: "10:34 AM", status: "read" },
-  { id: 4, text: "Great, thank you!", sender: "customer", timestamp: "10:35 AM" },
-  { id: 5, text: "Is my order ready for pickup?", sender: "customer", timestamp: "10:42 AM" },
-];
+import { WhatsAppOrder } from "@/lib/types";
 
 const Avatar = ({ src, fallback, className = "" }: { src?: string; fallback: string; className?: string }) => {
   return (
@@ -73,31 +30,107 @@ const Avatar = ({ src, fallback, className = "" }: { src?: string; fallback: str
 };
 
 export default function WhatsAppWebClone() {
-  const [selectedChatId, setSelectedChatId] = useState<number | null>(null);
+  const [selectedChatPhone, setSelectedChatPhone] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageInput, setMessageInput] = useState("");
-  const [messages, setMessages] = useState(mockMessages);
+  const [orders, setOrders] = useState<WhatsAppOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const selectedChat = mockChats.find((c) => c.id === selectedChatId);
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/whatsapp", { cache: "no-store" });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(data.orders || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch WhatsApp orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const filteredChats = mockChats.filter((chat) =>
-    chat.phone.includes(searchQuery)
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 3000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
+
+  // Group orders into chats by customerPhone
+  const chats = useMemo(() => {
+    const chatMap = new Map<string, WhatsAppOrder[]>();
+    
+    // Sort oldest to newest for chronological order inside chats
+    const sortedOrders = [...orders].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+    sortedOrders.forEach(order => {
+      if (!chatMap.has(order.customerPhone)) {
+        chatMap.set(order.customerPhone, []);
+      }
+      chatMap.get(order.customerPhone)!.push(order);
+    });
+
+    return Array.from(chatMap.entries()).map(([phone, messages]) => {
+      const lastMessage = messages[messages.length - 1];
+      const name = messages.find(m => m.customerName && m.customerName !== "Agent")?.customerName || "Unknown Contact";
+      
+      let lastMsgText = lastMessage.notes || "Sent an order";
+      if (lastMsgText.startsWith("Agent: ")) {
+        lastMsgText = lastMsgText.substring(7);
+      } else if (lastMsgText.startsWith("Message: \"")) {
+        lastMsgText = lastMsgText.substring(10, lastMsgText.length - 1);
+      }
+
+      return {
+        phone,
+        name,
+        lastMessage: lastMsgText,
+        timestamp: new Date(lastMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        messages: messages,
+        unread: 0, // Mocking unread as 0 for real data for now
+        avatar: "",
+      };
+    }).sort((a, b) => {
+      const lastA = a.messages[a.messages.length - 1];
+      const lastB = b.messages[b.messages.length - 1];
+      return new Date(lastB.createdAt).getTime() - new Date(lastA.createdAt).getTime();
+    });
+  }, [orders]);
+
+  const filteredChats = chats.filter((chat) =>
+    chat.phone.includes(searchQuery) || chat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim()) return;
+  const selectedChat = chats.find((c) => c.phone === selectedChatPhone);
 
-    const newMessage = {
-      id: messages.length + 1,
-      text: messageInput,
-      sender: "agent",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: "sent",
-    };
-    
-    setMessages([...messages, newMessage]);
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageInput.trim() || !selectedChatPhone) return;
+
+    const textToSend = messageInput;
     setMessageInput("");
+
+    try {
+      const res = await fetch("/api/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "send_message",
+          customerPhone: selectedChatPhone,
+          text: textToSend,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Fetch fresh data
+        fetchOrders();
+      } else {
+        console.error("Failed to send:", data.error);
+      }
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
   };
 
   return (
@@ -105,7 +138,7 @@ export default function WhatsAppWebClone() {
       {/* Left Sidebar (Customer List) */}
       <div
         className={`${
-          selectedChatId ? "hidden md:flex" : "flex"
+          selectedChatPhone ? "hidden md:flex" : "flex"
         } w-full md:w-[400px] flex-col border-r border-gray-200 bg-white`}
       >
         {/* Top Header */}
@@ -134,44 +167,50 @@ export default function WhatsAppWebClone() {
 
         {/* Contact List */}
         <div className="flex-1 overflow-y-auto bg-white">
-          {filteredChats.map((chat) => (
-            <div
-              key={chat.id}
-              onClick={() => setSelectedChatId(chat.id)}
-              className={`flex items-center px-3 py-3 cursor-pointer transition-colors group ${
-                selectedChatId === chat.id ? "bg-[#F0F2F5]" : "hover:bg-[#F5F6F6]"
-              }`}
-            >
-              <Avatar className="h-12 w-12 mr-3" src={chat.avatar} fallback={chat.phone.substring(0, 2)} />
-              
-              <div className="flex-1 min-w-0 border-b border-gray-100 pb-3 group-last:border-none h-full flex flex-col justify-center">
-                <div className="flex justify-between items-baseline mb-1">
-                  <h2 className="font-semibold text-[17px] truncate text-[#111B21]">
-                    {chat.phone}
-                  </h2>
-                  <span className={`text-xs flex-shrink-0 ml-2 ${chat.unread ? 'text-[#25D366] font-medium' : 'text-[#667781]'}`}>
-                    {chat.timestamp}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-[#667781] truncate pr-2">
-                    {chat.lastMessage}
-                  </p>
-                  {chat.unread > 0 && (
-                    <span className="bg-[#25D366] text-white text-[11px] font-bold h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0">
-                      {chat.unread}
+          {loading && chats.length === 0 ? (
+             <div className="p-4 text-center text-sm text-gray-500">Loading chats...</div>
+          ) : filteredChats.length === 0 ? (
+            <div className="p-4 text-center text-sm text-gray-500">No chats found.</div>
+          ) : (
+            filteredChats.map((chat) => (
+              <div
+                key={chat.phone}
+                onClick={() => setSelectedChatPhone(chat.phone)}
+                className={`flex items-center px-3 py-3 cursor-pointer transition-colors group ${
+                  selectedChatPhone === chat.phone ? "bg-[#F0F2F5]" : "hover:bg-[#F5F6F6]"
+                }`}
+              >
+                <Avatar className="h-12 w-12 mr-3" fallback={chat.name.substring(0, 2) || chat.phone.substring(0, 2)} />
+                
+                <div className="flex-1 min-w-0 border-b border-gray-100 pb-3 group-last:border-none h-full flex flex-col justify-center">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <h2 className="font-semibold text-[17px] truncate text-[#111B21]">
+                      {chat.phone}
+                    </h2>
+                    <span className={`text-xs flex-shrink-0 ml-2 ${chat.unread ? 'text-[#25D366] font-medium' : 'text-[#667781]'}`}>
+                      {chat.timestamp}
                     </span>
-                  )}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-[#667781] truncate pr-2">
+                      {chat.lastMessage}
+                    </p>
+                    {chat.unread > 0 && (
+                      <span className="bg-[#25D366] text-white text-[11px] font-bold h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0">
+                        {chat.unread}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
       {/* Right Main Area (Active Chat Dashboard) */}
       <div className={`${
-        !selectedChatId ? "hidden md:flex" : "flex"
+        !selectedChatPhone ? "hidden md:flex" : "flex"
       } flex-1 flex-col bg-[#F0F2F5]`}
       >
         {!selectedChat ? (
@@ -195,11 +234,11 @@ export default function WhatsAppWebClone() {
               <div className="flex items-center cursor-pointer">
                 <button 
                   className="md:hidden mr-2 p-1 text-[#54656F]" 
-                  onClick={() => setSelectedChatId(null)}
+                  onClick={() => setSelectedChatPhone(null)}
                 >
                   <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                 </button>
-                <Avatar className="mr-3" src={selectedChat.avatar} fallback={selectedChat.phone.substring(0, 2)} />
+                <Avatar className="mr-3" fallback={selectedChat.name.substring(0, 2) || selectedChat.phone.substring(0, 2)} />
                 <div>
                   <h2 className="font-semibold text-[#111B21] text-[16px]">{selectedChat.phone}</h2>
                   <p className="text-xs text-[#667781]">online</p>
@@ -221,8 +260,16 @@ export default function WhatsAppWebClone() {
                 </span>
               </div>
 
-              {messages.map((msg) => {
-                const isAgent = msg.sender === "agent";
+              {selectedChat.messages.map((msg) => {
+                let text = msg.notes || "Sent an order";
+                const isAgent = text.startsWith("Agent: ") || msg.customerName === "Agent";
+                
+                if (text.startsWith("Agent: ")) {
+                  text = text.substring(7);
+                } else if (text.startsWith("Message: \"")) {
+                  text = text.substring(10, text.length - 1);
+                }
+
                 return (
                   <div
                     key={msg.id}
@@ -234,17 +281,13 @@ export default function WhatsAppWebClone() {
                       }`}
                     >
                       <div className="text-[14.2px] leading-[19px] text-[#111B21] whitespace-pre-wrap pb-[10px] pr-2">
-                        {msg.text}
+                        {text}
                       </div>
                       <div className="float-right -mt-3 ml-2 flex items-center h-[15px] pt-1">
-                        <span className="text-[11px] text-[#667781] mr-1 leading-none">{msg.timestamp}</span>
+                        <span className="text-[11px] text-[#667781] mr-1 leading-none">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         {isAgent && (
                           <span className="text-[#53BDEB] leading-none">
-                            {msg.status === "read" ? (
-                              <CheckCheck size={14} strokeWidth={2.5} />
-                            ) : (
-                              <Check size={14} strokeWidth={2.5} className="text-[#667781]" />
-                            )}
+                            <CheckCheck size={14} strokeWidth={2.5} />
                           </span>
                         )}
                       </div>
